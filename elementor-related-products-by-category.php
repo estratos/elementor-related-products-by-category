@@ -14,53 +14,56 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-// Verificar que Elementor Pro está activo
-add_action( 'admin_init', 'erpbc_check_required_plugins' );
-function erpbc_check_required_plugins() {
-    if ( ! is_plugin_active( 'elementor-pro/elementor-pro.php' ) ) {
-        add_action( 'admin_notices', 'erpbc_missing_elementor_pro_notice' );
+// Definir constantes
+define( 'ERPBC_VERSION', '1.0.0' );
+define( 'ERPBC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'ERPBC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+
+// Verificar requisitos
+add_action( 'plugins_loaded', 'erpbc_init' );
+function erpbc_init() {
+    // Verificar que Elementor Pro y WooCommerce estén activos
+    if ( ! did_action( 'elementor/loaded' ) || ! function_exists( 'wc' ) ) {
+        add_action( 'admin_notices', 'erpbc_missing_plugins_notice' );
+        return;
     }
+    
+    // Verificar versión mínima de Elementor Pro
+    if ( ! version_compare( ELEMENTOR_VERSION, '3.0.0', '>=' ) ) {
+        add_action( 'admin_notices', 'erpbc_elementor_version_notice' );
+        return;
+    }
+    
+    // Inicializar el plugin
+    require_once ERPBC_PLUGIN_DIR . 'includes/class-plugin-core.php';
+    new ERPBC_Plugin_Core();
 }
 
-function erpbc_missing_elementor_pro_notice() {
+function erpbc_missing_plugins_notice() {
     ?>
     <div class="notice notice-error">
-        <p><?php _e( '<strong>Elementor Related Products by Category</strong> requiere Elementor Pro para funcionar. Por favor, instala y activa Elementor Pro.', 'elementor-related-products-by-category' ); ?></p>
+        <p><?php 
+            printf(
+                __( '<strong>Elementor Related Products by Category</strong> requiere %s y %s para funcionar.', 'elementor-related-products-by-category' ),
+                '<a href="https://elementor.com/pro/" target="_blank">Elementor Pro</a>',
+                '<a href="https://woocommerce.com/" target="_blank">WooCommerce</a>'
+            );
+        ?></p>
     </div>
     <?php
 }
 
-// Cargar la clase modificada
-add_action( 'elementor_pro/init', 'erpbc_override_product_related_class' );
-function erpbc_override_product_related_class() {
-    // Verificar que la clase original existe
-    if ( ! class_exists( '\ElementorPro\Modules\Woocommerce\Widgets\Product_Related' ) ) {
-        return;
-    }
-    
-    // Incluir nuestra clase modificada
-    require_once plugin_dir_path( __FILE__ ) . 'includes/class-override-product-related.php';
-    
-    // Remover la acción original de registro del widget
-    remove_action( 'elementor/widgets/register', [ \ElementorPro\Plugin::instance()->modules_manager->get_modules( 'woocommerce' )->get_widgets(), 'register_widgets' ], 20 );
-    
-    // Registrar nuestros widgets personalizados
-    add_action( 'elementor/widgets/register', 'erpbc_register_widgets', 20 );
-}
-
-function erpbc_register_widgets( $widgets_manager ) {
-    // Primero, registrar todos los widgets de WooCommerce excepto Product_Related
-    $woocommerce_module = \ElementorPro\Plugin::instance()->modules_manager->get_modules( 'woocommerce' );
-    $woocommerce_widgets = $woocommerce_module->get_widgets();
-    
-    foreach ( $woocommerce_widgets as $widget_class ) {
-        if ( $widget_class !== '\ElementorPro\Modules\Woocommerce\Widgets\Product_Related' ) {
-            $widgets_manager->register( new $widget_class() );
-        }
-    }
-    
-    // Registrar nuestro widget personalizado
-    $widgets_manager->register( new \ElementorPro\Modules\Woocommerce\Widgets\Product_Related_Override() );
+function erpbc_elementor_version_notice() {
+    ?>
+    <div class="notice notice-error">
+        <p><?php 
+            printf(
+                __( '<strong>Elementor Related Products by Category</strong> requiere Elementor Pro versión 3.0.0 o superior. Tu versión actual es %s.', 'elementor-related-products-by-category' ),
+                ELEMENTOR_VERSION
+            );
+        ?></p>
+    </div>
+    <?php
 }
 
 // Agregar enlace de configuración en la página de plugins
@@ -69,11 +72,4 @@ function erpbc_add_settings_link( $links ) {
     $settings_link = '<a href="' . admin_url( 'admin.php?page=elementor' ) . '">' . __( 'Configurar en Elementor', 'elementor-related-products-by-category' ) . '</a>';
     array_unshift( $links, $settings_link );
     return $links;
-}
-
-// Desactivar el plugin si se desinstala
-register_uninstall_hook( __FILE__, 'erpbc_uninstall' );
-function erpbc_uninstall() {
-    // Limpiar opciones si es necesario
-    delete_option( 'erpbc_version' );
 }
