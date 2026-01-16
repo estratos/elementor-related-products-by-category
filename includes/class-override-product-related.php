@@ -5,65 +5,105 @@ use Elementor\Controls_Manager;
 use Elementor\Core\Kits\Documents\Tabs\Global_Colors;
 use Elementor\Core\Kits\Documents\Tabs\Global_Typography;
 use Elementor\Group_Control_Typography;
-use ElementorPro\Plugin;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// Verificar que la clase base existe
+if ( ! class_exists( 'ElementorPro\Modules\Woocommerce\Widgets\Products_Base' ) ) {
+    // Intentar cargar manualmente el archivo de la clase base
+    $base_files = [
+        WP_PLUGIN_DIR . '/elementor-pro/modules/woocommerce/widgets/products.php',
+        WP_PLUGIN_DIR . '/elementor-pro/modules/woocommerce/widgets/products-base.php',
+    ];
+    
+    $base_loaded = false;
+    foreach ( $base_files as $base_file ) {
+        if ( file_exists( $base_file ) ) {
+            require_once $base_file;
+            $base_loaded = true;
+            break;
+        }
+    }
+    
+    if ( ! $base_loaded ) {
+        // Si no se puede cargar la clase base, crear una versión alternativa
+        return;
+    }
+}
+
 /**
- * Sobrescribe la clase Product_Related para mostrar productos de la misma categoría
+ * Widget personalizado de Productos Relacionados por Categoría
  */
-class Product_Related_Override extends Products_Base {
-
+class Product_Related_Custom extends Products_Base {
+    
     public function get_name() {
-        return 'woocommerce-product-related';
+        return 'woocommerce-product-related-custom';
     }
-
+    
     public function get_title() {
-        return esc_html__( 'Product Related', 'elementor-pro' );
+        return esc_html__( 'Related Products by Category', 'elementor-pro' );
     }
-
+    
     public function get_icon() {
         return 'eicon-product-related';
     }
-
+    
+    public function get_categories() {
+        return [ 'woocommerce-elements' ];
+    }
+    
     public function get_keywords() {
-        return [ 'woocommerce', 'shop', 'store', 'related', 'similar', 'product' ];
+        return [ 'woocommerce', 'shop', 'store', 'related', 'category', 'product' ];
     }
-
-    public function has_widget_inner_wrapper(): bool {
-        return ! Plugin::elementor()->experiments->is_feature_active( 'e_optimized_markup' );
-    }
-
-    public function get_style_depends(): array {
-        return [ 'widget-woocommerce-products' ];
-    }
-
+    
     protected function register_controls() {
         $this->start_controls_section(
             'section_related_products_content',
             [
-                'label' => esc_html__( 'Related Products', 'elementor-pro' ),
+                'label' => esc_html__( 'Related Products by Category', 'elementor-related-products-by-category' ),
             ]
         );
-
+        
         $this->add_control(
             'posts_per_page',
             [
                 'label' => esc_html__( 'Products Per Page', 'elementor-pro' ),
                 'type' => Controls_Manager::NUMBER,
                 'default' => 4,
-                'range' => [
-                    'px' => [
-                        'max' => 20,
+                'min' => 1,
+                'max' => 20,
+            ]
+        );
+        
+        $this->add_responsive_control(
+            'columns',
+            [
+                'label' => esc_html__( 'Columns', 'elementor-pro' ),
+                'type' => Controls_Manager::NUMBER,
+                'prefix_class' => 'elementor-grid%s-',
+                'min' => 1,
+                'max' => 12,
+                'default' => 4,
+                'required' => true,
+                'device_args' => [
+                    Controls_Manager::TABLET => [
+                        'default' => 2,
+                        'max' => 8,
                     ],
+                    Controls_Manager::MOBILE => [
+                        'default' => 1,
+                        'max' => 4,
+                    ],
+                ],
+                'min_affected_device' => [
+                    Controls_Manager::TABLET => 2,
+                    Controls_Manager::MOBILE => 1,
                 ],
             ]
         );
-
-        $this->add_columns_responsive_control();
-
+        
         $this->add_control(
             'orderby',
             [
@@ -81,7 +121,7 @@ class Product_Related_Override extends Products_Base {
                 ],
             ]
         );
-
+        
         $this->add_control(
             'order',
             [
@@ -94,269 +134,182 @@ class Product_Related_Override extends Products_Base {
                 ],
             ]
         );
-
-        // Nuevo control para incluir/excluir subcategorías
+        
         $this->add_control(
             'include_subcategories',
             [
-                'label' => esc_html__( 'Incluir Subcategorías', 'elementor-related-products-by-category' ),
+                'label' => esc_html__( 'Include Subcategories', 'elementor-related-products-by-category' ),
                 'type' => Controls_Manager::SWITCHER,
-                'label_on' => esc_html__( 'Sí', 'elementor-related-products-by-category' ),
+                'label_on' => esc_html__( 'Yes', 'elementor-related-products-by-category' ),
                 'label_off' => esc_html__( 'No', 'elementor-related-products-by-category' ),
                 'default' => 'yes',
                 'return_value' => 'yes',
-                'description' => esc_html__( 'Incluir productos de subcategorías de la categoría actual', 'elementor-related-products-by-category' ),
             ]
         );
-
+        
         $this->end_controls_section();
-
-        parent::register_controls();
-
-        $this->start_injection( [
-            'at' => 'before',
-            'of' => 'section_design_box',
-        ] );
-
-        $this->start_controls_section(
-            'section_heading_style',
-            [
-                'label' => esc_html__( 'Heading', 'elementor-pro' ),
-                'tab' => Controls_Manager::TAB_STYLE,
-            ]
-        );
-
-        $this->add_control(
-            'show_heading',
-            [
-                'label' => esc_html__( 'Heading', 'elementor-pro' ),
-                'type' => Controls_Manager::SWITCHER,
-                'label_off' => esc_html__( 'Hide', 'elementor-pro' ),
-                'label_on' => esc_html__( 'Show', 'elementor-pro' ),
-                'default' => 'yes',
-                'return_value' => 'yes',
-                'prefix_class' => 'show-heading-',
-            ]
-        );
-
-        $this->add_control(
-            'heading_color',
-            [
-                'label' => esc_html__( 'Color', 'elementor-pro' ),
-                'type' => Controls_Manager::COLOR,
-                'global' => [
-                    'default' => Global_Colors::COLOR_PRIMARY,
-                ],
-                'selectors' => [
-                    '.woocommerce {{WRAPPER}}.elementor-wc-products .products > h2' => 'color: {{VALUE}}',
-                ],
-                'condition' => [
-                    'show_heading!' => '',
-                ],
-            ]
-        );
-
-        $this->add_group_control(
-            Group_Control_Typography::get_type(),
-            [
-                'name' => 'heading_typography',
-                'global' => [
-                    'default' => Global_Typography::TYPOGRAPHY_PRIMARY,
-                ],
-                'selector' => '.woocommerce {{WRAPPER}}.elementor-wc-products .products > h2',
-                'condition' => [
-                    'show_heading!' => '',
-                ],
-            ]
-        );
-
-        $this->add_responsive_control(
-            'heading_text_align',
-            [
-                'label' => esc_html__( 'Text Align', 'elementor-pro' ),
-                'type' => Controls_Manager::CHOOSE,
-                'options' => [
-                    'start' => [
-                        'title' => esc_html__( 'Start', 'elementor-pro' ),
-                        'icon' => 'eicon-text-align-left',
-                    ],
-                    'center' => [
-                        'title' => esc_html__( 'Center', 'elementor-pro' ),
-                        'icon' => 'eicon-text-align-center',
-                    ],
-                    'end' => [
-                        'title' => esc_html__( 'End', 'elementor-pro' ),
-                        'icon' => 'eicon-text-align-right',
-                    ],
-                ],
-                'classes' => 'elementor-control-start-end',
-                'selectors_dictionary' => [
-                    'left' => is_rtl() ? 'end' : 'start',
-                    'right' => is_rtl() ? 'start' : 'end',
-                ],
-                'selectors' => [
-                    '.woocommerce {{WRAPPER}}.elementor-wc-products .products > h2' => 'text-align: {{VALUE}}',
-                ],
-                'condition' => [
-                    'show_heading!' => '',
-                ],
-            ]
-        );
-
-        $this->add_responsive_control(
-            'heading_spacing',
-            [
-                'label' => esc_html__( 'Spacing', 'elementor-pro' ),
-                'type' => Controls_Manager::SLIDER,
-                'size_units' => [ 'px', 'em', 'rem', 'custom' ],
-                'selectors' => [
-                    '.woocommerce {{WRAPPER}}.elementor-wc-products .products > h2' => 'margin-bottom: {{SIZE}}{{UNIT}}',
-                ],
-                'condition' => [
-                    'show_heading!' => '',
-                ],
-            ]
-        );
-
-        $this->end_controls_section();
-
-        $this->end_injection();
+        
+        // Secciones de estilo heredadas de Products_Base
+        $this->register_design_controls();
     }
-
+    
     protected function render() {
         global $product;
-
-        $product = $this->get_product();
-
+        
+        $product = wc_get_product();
+        
         if ( ! $product ) {
+            // Intentar obtener el producto del contexto actual
+            $product_id = get_the_ID();
+            if ( 'product' === get_post_type( $product_id ) ) {
+                $product = wc_get_product( $product_id );
+            }
+            
+            if ( ! $product ) {
+                echo '<p>' . esc_html__( 'No product found', 'elementor-related-products-by-category' ) . '</p>';
+                return;
+            }
+        }
+        
+        $settings = $this->get_settings_for_display();
+        
+        // Obtener productos relacionados por categoría
+        $related_products = $this->get_related_products_by_category( $product, $settings );
+        
+        if ( empty( $related_products ) ) {
             return;
         }
-
-        $settings = $this->get_settings_for_display();
-
-        // Add a wrapper class to the Add to Cart & View Items elements if the automically_align_buttons switch has been selected.
-        if ( 'yes' === $settings['automatically_align_buttons'] ) {
-            add_filter( 'woocommerce_loop_add_to_cart_link', [ $this, 'add_to_cart_wrapper' ], 10, 1 );
-        }
-
+        
+        // Configurar argumentos para la plantilla
         $args = [
-            'posts_per_page' => 4,
-            'columns' => 4,
-            'orderby' => $settings['orderby'],
-            'order' => $settings['order'],
+            'posts_per_page' => ! empty( $settings['posts_per_page'] ) ? absint( $settings['posts_per_page'] ) : 4,
+            'columns' => ! empty( $settings['columns'] ) ? absint( $settings['columns'] ) : 4,
+            'orderby' => ! empty( $settings['orderby'] ) ? $settings['orderby'] : 'date',
+            'order' => ! empty( $settings['order'] ) ? $settings['order'] : 'desc',
+            'related_products' => $related_products,
         ];
-
-        if ( ! empty( $settings['posts_per_page'] ) ) {
-            $args['posts_per_page'] = $settings['posts_per_page'];
-        }
-
-        if ( ! empty( $settings['columns'] ) ) {
-            $args['columns'] = $settings['columns'];
-        }
-
-        $args = array_map( 'sanitize_text_field', $args );
-
-        // Obtener productos de la misma categoría usando nuestro método personalizado
-        $include_subcategories = isset( $settings['include_subcategories'] ) && 'yes' === $settings['include_subcategories'];
-        $args['related_products'] = $this->get_products_by_same_category( $product, $args['posts_per_page'], $include_subcategories );
-
-        // Handle orderby.
-        $args['related_products'] = wc_products_array_orderby( $args['related_products'], $args['orderby'], $args['order'] );
-
-        ob_start();
-
-        wc_get_template( 'single-product/related.php', $args );
-
-        $related_products_html = ob_get_clean();
-
-        if ( $related_products_html ) {
-            $related_products_html = str_replace( '<ul class="products', '<ul class="products elementor-grid', $related_products_html );
-
-            echo $related_products_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-        }
-
-        if ( 'yes' === $settings['automatically_align_buttons'] ) {
-            remove_filter( 'woocommerce_loop_add_to_cart_link', [ $this, 'add_to_cart_wrapper' ] );
-        }
+        
+        // Forzar el número de columnas con clases CSS
+        $columns_class = 'columns-' . $args['columns'];
+        
+        ?>
+        <section class="related products">
+            
+            <?php
+            $heading = apply_filters( 'woocommerce_product_related_products_heading', __( 'Related products', 'woocommerce' ) );
+            
+            if ( $heading ) :
+                ?>
+                <h2><?php echo esc_html( $heading ); ?></h2>
+            <?php endif; ?>
+            
+            <ul class="products <?php echo esc_attr( $columns_class ); ?>">
+                <?php
+                foreach ( $related_products as $related_product ) :
+                    $post_object = get_post( $related_product->get_id() );
+                    setup_postdata( $GLOBALS['post'] =& $post_object ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited, Squiz.PHP.DisallowMultipleAssignments.Found
+                    
+                    wc_get_template_part( 'content', 'product' );
+                endforeach;
+                wp_reset_postdata();
+                ?>
+            </ul>
+        </section>
+        <?php
     }
-
+    
     /**
-     * Obtiene productos de la misma categoría que el producto actual
-     *
-     * @param \WC_Product $product Producto actual
-     * @param int $limit Límite de productos a mostrar
-     * @param bool $include_subcategories Incluir subcategorías
-     * @return array Array de productos
+     * Obtiene productos relacionados por categoría
      */
-    private function get_products_by_same_category( $product, $limit, $include_subcategories = true ) {
+    private function get_related_products_by_category( $product, $settings ) {
         $product_id = $product->get_id();
         
-        // Obtener las categorías del producto actual
-        $categories = wp_get_post_terms( $product_id, 'product_cat', array( 'fields' => 'ids' ) );
+        // Obtener categorías del producto
+        $category_ids = wp_get_post_terms( $product_id, 'product_cat', array( 'fields' => 'ids' ) );
         
-        if ( empty( $categories ) ) {
-            return array();
+        if ( empty( $category_ids ) ) {
+            return [];
         }
         
-        // Si se deben incluir subcategorías, obtener todos los IDs de categorías hijas
-        if ( $include_subcategories ) {
-            $all_category_ids = $categories;
-            foreach ( $categories as $category_id ) {
+        // Incluir subcategorías si está configurado
+        if ( 'yes' === $settings['include_subcategories'] ) {
+            $all_category_ids = $category_ids;
+            foreach ( $category_ids as $category_id ) {
                 $child_categories = get_term_children( $category_id, 'product_cat' );
                 if ( ! is_wp_error( $child_categories ) && ! empty( $child_categories ) ) {
                     $all_category_ids = array_merge( $all_category_ids, $child_categories );
                 }
             }
-            $categories = array_unique( $all_category_ids );
+            $category_ids = array_unique( $all_category_ids );
         }
         
-        // Argumentos para la consulta de productos
-        $args = array(
-            'post_type'             => 'product',
-            'post_status'           => 'publish',
-            'ignore_sticky_posts'   => 1,
-            'posts_per_page'        => $limit + 5, // Traer más para filtrar productos no visibles
-            'post__not_in'          => array( $product_id ),
-            'tax_query'             => array(
-                'relation' => 'AND',
-                array(
-                    'taxonomy'      => 'product_cat',
-                    'field'         => 'term_id',
-                    'terms'         => $categories,
-                    'operator'      => 'IN'
-                ),
-                array(
-                    'taxonomy' => 'product_visibility',
-                    'field'    => 'name',
-                    'terms'    => 'exclude-from-catalog',
-                    'operator' => 'NOT IN',
-                ),
-            ),
-            'meta_query'            => array(
-                'relation' => 'AND',
-                array(
-                    'key'     => '_stock_status',
-                    'value'   => 'outofstock',
-                    'compare' => '!='
-                ),
-            ),
-        );
+        // Argumentos de consulta
+        $args = [
+            'post_type'           => 'product',
+            'post_status'         => 'publish',
+            'posts_per_page'      => ! empty( $settings['posts_per_page'] ) ? absint( $settings['posts_per_page'] ) + 1 : 5,
+            'post__not_in'        => [ $product_id ],
+            'orderby'             => ! empty( $settings['orderby'] ) ? $settings['orderby'] : 'date',
+            'order'               => ! empty( $settings['order'] ) ? $settings['order'] : 'desc',
+            'tax_query'           => [
+                [
+                    'taxonomy' => 'product_cat',
+                    'field'    => 'term_id',
+                    'terms'    => $category_ids,
+                    'operator' => 'IN',
+                ],
+            ],
+            'meta_query'          => [],
+        ];
         
-        // Ordenar por aleatorio si se seleccionó 'rand'
-        if ( isset( $_GET['orderby'] ) && 'rand' === $_GET['orderby'] ) {
-            $args['orderby'] = 'rand';
+        // Manejar ordenamientos especiales
+        switch ( $args['orderby'] ) {
+            case 'price':
+                $args['meta_key'] = '_price';
+                $args['orderby'] = 'meta_value_num';
+                break;
+            case 'popularity':
+                $args['meta_key'] = 'total_sales';
+                $args['orderby'] = 'meta_value_num';
+                break;
+            case 'rating':
+                $args['meta_key'] = '_wc_average_rating';
+                $args['orderby'] = 'meta_value_num';
+                break;
+            case 'rand':
+                $args['orderby'] = 'rand';
+                break;
         }
         
+        // Excluir productos ocultos
+        $args['tax_query'][] = [
+            'taxonomy' => 'product_visibility',
+            'field'    => 'name',
+            'terms'    => [ 'exclude-from-catalog', 'exclude-from-search' ],
+            'operator' => 'NOT IN',
+        ];
+        
+        // Solo productos en stock
+        $args['meta_query'][] = [
+            'key'     => '_stock_status',
+            'value'   => 'outofstock',
+            'compare' => '!=',
+        ];
+        
+        // Ejecutar consulta
         $products_query = new \WP_Query( $args );
-        $related_products = array();
+        $related_products = [];
         
         if ( $products_query->have_posts() ) {
-            while ( $products_query->have_posts() && count( $related_products ) < $limit ) {
-                $products_query->the_post();
-                $related_product = wc_get_product( get_the_ID() );
-                
-                if ( $related_product && $related_product->is_visible() && $related_product->is_in_stock() ) {
+            foreach ( $products_query->posts as $post ) {
+                $related_product = wc_get_product( $post );
+                if ( $related_product && $related_product->is_visible() ) {
                     $related_products[] = $related_product;
+                    
+                    // Limitar al número solicitado
+                    if ( count( $related_products ) >= $settings['posts_per_page'] ) {
+                        break;
+                    }
                 }
             }
             wp_reset_postdata();
@@ -364,19 +317,166 @@ class Product_Related_Override extends Products_Base {
         
         return $related_products;
     }
-
-    public function render_plain_content() {}
-
-    public function get_group_name() {
-        return 'woocommerce';
-    }
-}
-
-// Asegurar que la clase base Products_Base esté disponible
-if ( ! class_exists( 'ElementorPro\Modules\Woocommerce\Widgets\Products_Base' ) ) {
-    // Intentar cargar la clase base si no está disponible
-    $base_file = WP_PLUGIN_DIR . '/elementor-pro/modules/woocommerce/widgets/products-base.php';
-    if ( file_exists( $base_file ) ) {
-        require_once $base_file;
+    
+    /**
+     * Registrar controles de diseño heredados
+     */
+    private function register_design_controls() {
+        // Sección de diseño de productos
+        $this->start_controls_section(
+            'section_design_box',
+            [
+                'label' => esc_html__( 'Box', 'elementor-pro' ),
+                'tab' => Controls_Manager::TAB_STYLE,
+            ]
+        );
+        
+        $this->add_control(
+            'box_border_width',
+            [
+                'label' => esc_html__( 'Border Width', 'elementor-pro' ),
+                'type' => Controls_Manager::DIMENSIONS,
+                'size_units' => [ 'px', '%', 'em', 'rem', 'custom' ],
+                'selectors' => [
+                    '{{WRAPPER}} .product' => 'border-width: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+                ],
+            ]
+        );
+        
+        $this->add_control(
+            'box_border_radius',
+            [
+                'label' => esc_html__( 'Border Radius', 'elementor-pro' ),
+                'type' => Controls_Manager::DIMENSIONS,
+                'size_units' => [ 'px', '%', 'em', 'rem', 'custom' ],
+                'selectors' => [
+                    '{{WRAPPER}} .product' => 'border-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+                ],
+            ]
+        );
+        
+        $this->add_control(
+            'box_padding',
+            [
+                'label' => esc_html__( 'Padding', 'elementor-pro' ),
+                'type' => Controls_Manager::DIMENSIONS,
+                'size_units' => [ 'px', '%', 'em', 'rem', 'custom' ],
+                'selectors' => [
+                    '{{WRAPPER}} .product' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+                ],
+            ]
+        );
+        
+        $this->end_controls_section();
+        
+        // Sección de imagen
+        $this->start_controls_section(
+            'section_design_image',
+            [
+                'label' => esc_html__( 'Image', 'elementor-pro' ),
+                'tab' => Controls_Manager::TAB_STYLE,
+            ]
+        );
+        
+        $this->add_group_control(
+            \Elementor\Group_Control_Border::get_type(),
+            [
+                'name' => 'image_border',
+                'selector' => '{{WRAPPER}} .product img',
+            ]
+        );
+        
+        $this->add_control(
+            'image_border_radius',
+            [
+                'label' => esc_html__( 'Border Radius', 'elementor-pro' ),
+                'type' => Controls_Manager::DIMENSIONS,
+                'size_units' => [ 'px', '%', 'em', 'rem', 'custom' ],
+                'selectors' => [
+                    '{{WRAPPER}} .product img' => 'border-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+                ],
+            ]
+        );
+        
+        $this->end_controls_section();
+        
+        // Sección de contenido
+        $this->start_controls_section(
+            'section_design_content',
+            [
+                'label' => esc_html__( 'Content', 'elementor-pro' ),
+                'tab' => Controls_Manager::TAB_STYLE,
+            ]
+        );
+        
+        $this->add_control(
+            'heading_title_style',
+            [
+                'label' => esc_html__( 'Title', 'elementor-pro' ),
+                'type' => Controls_Manager::HEADING,
+                'separator' => 'before',
+            ]
+        );
+        
+        $this->add_control(
+            'title_color',
+            [
+                'label' => esc_html__( 'Color', 'elementor-pro' ),
+                'type' => Controls_Manager::COLOR,
+                'global' => [
+                    'default' => Global_Colors::COLOR_PRIMARY,
+                ],
+                'selectors' => [
+                    '{{WRAPPER}} .woocommerce-loop-product__title' => 'color: {{VALUE}}',
+                ],
+            ]
+        );
+        
+        $this->add_group_control(
+            Group_Control_Typography::get_type(),
+            [
+                'name' => 'title_typography',
+                'global' => [
+                    'default' => Global_Typography::TYPOGRAPHY_PRIMARY,
+                ],
+                'selector' => '{{WRAPPER}} .woocommerce-loop-product__title',
+            ]
+        );
+        
+        $this->add_control(
+            'heading_price_style',
+            [
+                'label' => esc_html__( 'Price', 'elementor-pro' ),
+                'type' => Controls_Manager::HEADING,
+                'separator' => 'before',
+            ]
+        );
+        
+        $this->add_control(
+            'price_color',
+            [
+                'label' => esc_html__( 'Color', 'elementor-pro' ),
+                'type' => Controls_Manager::COLOR,
+                'global' => [
+                    'default' => Global_Colors::COLOR_PRIMARY,
+                ],
+                'selectors' => [
+                    '{{WRAPPER}} .price' => 'color: {{VALUE}}',
+                ],
+            ]
+        );
+        
+        $this->add_group_control(
+            Group_Control_Typography::get_type(),
+            [
+                'name' => 'price_typography',
+                'global' => [
+                    'default' => Global_Typography::TYPOGRAPHY_PRIMARY,
+                ],
+                'selector' => '{{WRAPPER}} .price',
+            ]
+        );
+        
+        $this->end_controls_section();
     }
 }
