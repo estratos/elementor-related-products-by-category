@@ -3,7 +3,7 @@
  * Plugin Name: Elementor Related Products - Same Category
  * Plugin URI: https://tusitio.com
  * Description: Filtra productos relacionados por primera categoría para Elementor Pro
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Tu Nombre
  * License: GPL v2 or later
  */
@@ -104,6 +104,9 @@ class Elementor_Related_Same_Category {
         // Filtrar productos que no estén en la misma categoría
         $filtered_ids = [];
         
+        // Obtener el límite de posts_per_page, usar 4 por defecto si no está definido
+        $posts_per_page = isset( $args['posts_per_page'] ) ? $args['posts_per_page'] : 4;
+        
         foreach ( $related_ids as $related_id ) {
             $related_categories = wp_get_post_terms( $related_id, 'product_cat', [ 'fields' => 'ids' ] );
             
@@ -114,7 +117,7 @@ class Elementor_Related_Same_Category {
             }
             
             // Limitar al número solicitado
-            if ( count( $filtered_ids ) >= $args['posts_per_page'] ) {
+            if ( count( $filtered_ids ) >= $posts_per_page ) {
                 break;
             }
         }
@@ -134,6 +137,11 @@ class Elementor_Related_Same_Category {
                 echo '<strong>Related Category Filter Debug:</strong><br>';
                 echo 'Product ID: ' . $product->get_id() . '<br>';
                 echo 'Categories: ' . implode( ', ', $categories ) . '<br>';
+                
+                // Mostrar productos relacionados actuales
+                $related_ids = wc_get_related_products( $product->get_id(), 10 );
+                echo 'Related Products (IDs): ' . implode( ', ', $related_ids ) . '<br>';
+                
                 echo '</div>';
             }
         }
@@ -160,4 +168,11 @@ add_action( 'admin_notices', function() {
     if ( ! function_exists( 'wc' ) ) {
         echo '<div class="notice notice-warning"><p><strong>Elementor Related Products - Same Category:</strong> WooCommerce no está activo. Este plugin requiere WooCommerce.</p></div>';
     }
+} );
+
+// Agregar enlace de configuración en plugins
+add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), function( $links ) {
+    $settings_link = '<a href="' . admin_url( 'edit.php?post_type=product' ) . '">' . esc_html__( 'Ver Productos', 'elementor-related-same-category' ) . '</a>';
+    array_unshift( $links, $settings_link );
+    return $links;
 } );
