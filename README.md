@@ -1,61 +1,61 @@
-=== Elementor Related Products by Category ===
-Contributors: tu-nombre
-Tags: elementor, elementor pro, woocommerce, related products, products by category
-Requires at least: 5.0
-Tested up to: 6.4
-Requires PHP: 7.2
-Stable tag: 1.0.0
-License: GPL v2 or later
-License URI: https://www.gnu.org/licenses/gpl-2.0.html
+# Related Products – Same Category Only
 
-Modifica el widget de Productos Relacionados de Elementor Pro para mostrar solo productos de la misma categoría.
+Lightweight WooCommerce plugin that **forces related products to be selected exclusively from the product’s main category**, preventing WooCommerce from mixing results based on tags or other automatic signals.  
+Fully **compatible with Elementor Pro** and safe across updates.
 
-== Descripción ==
+---
 
-Este plugin modifica el comportamiento del widget "Productos Relacionados" de Elementor Pro para que solo muestre productos que pertenecen a las mismas categorías que el producto actual.
+## ✨ Features
 
-**Características:**
-- Reemplaza el widget original de Elementor Pro
-- Muestra productos solo de la misma categoría
-- Opción para incluir/excluir subcategorías
-- Mantiene todas las funcionalidades originales del widget
-- Totalmente compatible con Elementor Pro y WooCommerce
+- 🗂️ Uses **only the product’s primary category**
+- 🔢 Displays **up to 4 related products**
+- 🧩 Compatible with **WooCommerce** and **Elementor Pro**
+- 🚫 Does not use tags to relate products
+- ⚡ No custom SQL, no template overrides
+- 🔁 Smart fallback if no valid products are found
+- 🛡️ Update-safe and future-proof
 
-== Instalación ==
+---
 
-1. Sube la carpeta `elementor-related-products-by-category` al directorio `/wp-content/plugins/`
-2. Activa el plugin desde el menú de Plugins en WordPress
-3. Asegúrate de que Elementor Pro esté activo
-4. El widget de Productos Relacionados ahora mostrará solo productos de la misma categoría
+## 📦 Installation
 
-== Uso ==
+1. Create the plugin folder:
 
-1. Ve a cualquier página/página de producto editada con Elementor
-2. Agrega el widget "Productos Relacionados"
-3. En los ajustes del widget, encontrarás una nueva opción "Incluir Subcategorías"
-4. Configura el widget como lo harías normalmente
+wp-content/plugins/elementor-related-products-by-category/
 
-== Requisitos ==
 
-- WordPress 5.0 o superior
-- Elementor Pro 3.0 o superior
-- WooCommerce 4.0 o superior
-- PHP 7.2 o superior
+2. Create the plugin file: elementor-related-products-by-category-php
 
-== Preguntas Frecuentes ==
 
-= ¿Este plugin afecta los productos relacionados nativos de WooCommerce? =
-No, solo afecta al widget de Elementor Pro. Los productos relacionados en las páginas de producto de WooCommerce seguirán funcionando normalmente.
+3. Paste the plugin code into the file.
+4. Activate the plugin from **WP Admin → Plugins**.
 
-= ¿Puedo usar este plugin sin Elementor Pro? =
-No, este plugin requiere Elementor Pro para funcionar.
+---
 
-= ¿Qué pasa si actualizo Elementor Pro? =
-El plugin continuará funcionando, pero si Elementor Pro cambia significativamente su estructura de clases, podría necesitar una actualización.
+## 🧠 How It Works
 
-== Cambios ==
+The plugin hooks into WooCommerce’s native filter:
 
-= 1.0.0 =
-* Versión inicial
-* Modificación del widget Productos Relacionados
-* Opción para incluir/excluir subcategorías
+
+and replaces the default related products logic with a controlled `WP_Query` that:
+
+- Uses the same **primary category**
+- Excludes the current product
+- Respects product visibility and WooCommerce meta rules
+
+This prevents WooCommerce from filling related products using tags, popularity, or other heuristics.
+
+---
+
+## ⚙️ Quick Configuration
+
+### Change the number of related products
+
+Edit this line in the plugin file:
+
+```php
+'posts_per_page' => 4,
+
+
+
+
